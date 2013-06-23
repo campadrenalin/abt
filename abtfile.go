@@ -15,6 +15,7 @@ type SectionList []SectionData
 
 type SectionData struct {
 	Path     string
+	Origin   string
 	Start    int64
 	Size     int64
 	Filesize int64
@@ -27,10 +28,10 @@ type ABTFileSource interface {
 
 func getSectionList(input io.Reader) (list SectionList, err error) {
 
-    list = make(SectionList, 0, 5)
-    err = bencode.Unmarshal(input, &list)
+	list = make(SectionList, 0, 5)
+	err = bencode.Unmarshal(input, &list)
 
-    return
+	return
 }
 
 func NewABTFile(source ABTFileSource) (abtfile *ABTFile, err error) {

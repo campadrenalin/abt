@@ -7,8 +7,8 @@ import (
 )
 
 type Config struct {
-    command string
-    action  Action
+	command string
+	action  Action
 
 	verbose bool
 	help    bool
@@ -35,33 +35,27 @@ func main() {
 		return
 	}
 
-    if flagset.NArg() < 1 {
-        fmt.Fprintf(os.Stderr, "abt must be run with a command.\n\n")
-        flagset.Usage()
-        return
-    }
+	if flagset.NArg() < 1 {
+		fmt.Fprintf(os.Stderr, "abt must be run with a command.\n\n")
+		flagset.Usage()
+		return
+	}
 
-    config.command = flagset.Args()[0]
-    actions := map[string] Action {
-        "list": doList,
-        "create": doCreate,
-    }
-    config.action = actions[config.command]
-    if config.action == nil {
-        fmt.Fprintf(os.Stderr, "'%s' is not a legit command.\n\n", config.command)
-        flagset.Usage()
-        return
-    }
+	config.command = flagset.Args()[0]
+	actions := map[string]Action{
+		"list":   doList,
+		"create": doCreate,
+		"insert": doInsert,
+	}
+	config.action = actions[config.command]
+	if config.action == nil {
+		fmt.Fprintf(os.Stderr, "'%s' is not a legit command.\n\n", config.command)
+		flagset.Usage()
+		return
+	}
 
-	for _, value := range flagset.Args()[1:] {
-		err := config.action(&config, &value)
-        if err != nil {
-            fmt.Fprintf(
-                os.Stderr,
-                "Could not process file '%s'\n%s\n",
-                value,
-                err.Error(),
-            )
-        }
+	err := config.action(&config, flagset.Args()[1:])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
 	}
 }
