@@ -2,10 +2,16 @@ package abt
 
 import (
 	bencode "code.google.com/p/bencode-go"
-	"errors"
 	"io"
 	"os"
 )
+
+type ABTFile struct {
+	Sections SectionList
+	Source   ABTFileSource
+}
+
+type SectionList []SectionData
 
 type SectionData struct {
 	Path     string
@@ -14,85 +20,18 @@ type SectionData struct {
 	Filesize int64
 }
 
-func parseSectionData(data interface{}) (sdstruct SectionData, err error) {
-	// Convert interface{} to map
-	toMap, ok := data.(map[string]interface{})
-	if !ok {
-		err = errors.New("Item in section map was not a map")
-		return
-	}
-
-	// Ensure all necessary fields are present
-	fields := [...]string{"path", "start", "size", "filesize"}
-	for _, fieldname := range fields {
-		_, ok := toMap[fieldname]
-		if !ok {
-			err = errors.New("Missing field: " + fieldname)
-		}
-	}
-
-	// Extract fields
-	raw_path := toMap["path"]
-	raw_start := toMap["start"]
-	raw_size := toMap["size"]
-	raw_filesize := toMap["filesize"]
-
-	path, ok_path := raw_path.(string)
-	start, ok_start := raw_start.(int64)
-	size, ok_size := raw_size.(int64)
-	filesize, ok_fsize := raw_filesize.(int64)
-
-	if !(ok_path && ok_start && ok_size && ok_fsize) {
-		err = errors.New("A field was the wrong type")
-		return
-	}
-
-	sdstruct.Path = path
-	sdstruct.Start = start
-	sdstruct.Size = size
-	sdstruct.Filesize = filesize
-
-	return
-}
-
-func getSectionList(input io.Reader) (data []SectionData, err error) {
-	var decoded interface{}
-	decoded, err = bencode.Decode(input)
-	if err != nil {
-		return
-	}
-	toList, ok := decoded.([]interface{})
-	if !ok {
-		err = errors.New("Could not parse section map as list")
-		return
-	}
-
-	length := len(toList)
-	data = make([]SectionData, length, length)
-
-	for index, value := range toList {
-		var sdstruct SectionData
-
-		sdstruct, err = parseSectionData(value)
-		if err != nil {
-			return
-		}
-		data[index] = sdstruct
-	}
-	return
-}
-
 type ABTFileSource interface {
 	io.Reader
 	io.ReaderAt
 }
 
-type ABTFile struct {
-	Sections SectionList
-	Source   ABTFileSource
-}
+func getSectionList(input io.Reader) (list SectionList, err error) {
 
-type SectionList []SectionData
+    list = make(SectionList, 0, 5)
+    err = bencode.Unmarshal(input, &list)
+
+    return
+}
 
 func NewABTFile(source ABTFileSource) (abtfile *ABTFile, err error) {
 	sectionList, err := getSectionList(source)
