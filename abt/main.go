@@ -4,50 +4,60 @@ import (
 	"flag"
 	"fmt"
 	"os"
-
-	"github.com/campadrenalin/abt"
 )
 
-type Action struct {
+type Config struct {
+    command string
+    action  Action
+
 	verbose bool
 	help    bool
 }
 
-func doAction(action *Action, path *string) (err error) {
-
-	abtfile, err := abt.OpenABTFile(path)
-	if err != nil {
-		return
-	}
-
-	fmt.Printf("%#v\n", *abtfile)
-	return
-}
-
 func main() {
-	var action Action
+	var config Config
 
 	flagset := flag.NewFlagSet("abt", flag.PanicOnError)
 	flagset.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "\tabt [ FILE... ]\n")
+		fmt.Fprintf(os.Stderr, "\tabt command [ FILE... ]\n")
 		fmt.Fprintf(os.Stderr, "\nFlags:\n")
 		flagset.PrintDefaults()
 	}
 
-	flagset.BoolVar(&action.verbose, "v", false, "Verbose output")
-	flagset.BoolVar(&action.help, "help", false, "Show this message")
+	flagset.BoolVar(&config.verbose, "v", false, "Verbose output")
+	flagset.BoolVar(&config.help, "help", false, "Show this message")
 
 	flagset.Parse(os.Args[1:])
 
-	if action.help {
+	if config.help {
 		flagset.Usage()
 		return
 	}
-	for _, value := range flagset.Args() {
-		err := doAction(&action, &value)
+
+    if flagset.NArg() < 1 {
+        fmt.Fprintf(os.Stderr, "abt must be run with a command.\n\n")
+        flagset.Usage()
+        return
+    }
+
+    config.command = flagset.Args()[0]
+    actions := map[string] Action {
+        "list": doList,
+        "create": doCreate,
+    }
+    config.action = actions[config.command]
+    if config.action == nil {
+        fmt.Fprintf(os.Stderr, "'%s' is not a legit command.\n\n", config.command)
+        flagset.Usage()
+        return
+    }
+
+	for _, value := range flagset.Args()[1:] {
+		err := config.action(&config, &value)
         if err != nil {
-            fmt.Printf(
+            fmt.Fprintf(
+                os.Stderr,
                 "Could not process file '%s'\n%s\n",
                 value,
                 err.Error(),
